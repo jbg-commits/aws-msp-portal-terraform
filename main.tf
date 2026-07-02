@@ -15,6 +15,14 @@ module "network" {
   db_port                   = var.db_port
 }
 
+module "deploy" {
+  source = "./modules/deploy"
+
+  project_name      = var.project_name
+  aws_region        = var.aws_region
+  target_group_name = module.compute.target_group_name
+}
+
 module "database" {
   source = "./modules/database"
 
@@ -38,4 +46,5 @@ module "compute" {
   app_security_group_id = module.network.app_security_group_id
   app_port              = var.app_port
   instance_type         = var.instance_type
+  aws_region            = var.aws_region
 }

@@ -76,3 +76,18 @@ output "db_subnet_group_name" {
   description = "Name of the DB subnet group"
   value       = module.database.db_subnet_group_name
 }
+
+output "codedeploy_app_name" {
+  description = "Name of the CodeDeploy application"
+  value       = module.deploy.codedeploy_app_name
+}
+
+output "deployment_group_name" {
+  description = "Name of the CodeDeploy deployment group"
+  value       = module.deploy.deployment_group_name
+}
+
+output "artifacts_bucket_name" {
+  description = "S3 bucket to upload deployment bundles"
+  value       = module.deploy.artifacts_bucket_name
+}

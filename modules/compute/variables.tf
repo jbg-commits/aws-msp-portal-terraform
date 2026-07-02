@@ -39,3 +39,9 @@ variable "instance_type" {
   type        = string
   default     = "t3.micro"
 }
+
+variable "aws_region" {
+  description = "AWS region, used for CodeDeploy agent install URL"
+  type        = string
+  default     = "us-east-1"
+}

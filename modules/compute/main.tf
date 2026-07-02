@@ -39,6 +39,11 @@ resource "aws_iam_role_policy_attachment" "ec2_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+resource "aws_iam_role_policy_attachment" "ec2_codedeploy" {
+  role       = aws_iam_role.ec2_ssm.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforAWSCodeDeploy"
+}
+
 resource "aws_iam_instance_profile" "ec2_ssm" {
   name = "${var.project_name}-ec2-ssm-profile"
   role = aws_iam_role.ec2_ssm.name
@@ -103,6 +108,16 @@ resource "aws_instance" "app" {
 
   user_data = <<-EOF
     #!/bin/bash
+    # Install CodeDeploy agent
+    yum install -y ruby wget
+    cd /tmp
+    wget https://aws-codedeploy-${var.aws_region}.s3.${var.aws_region}.amazonaws.com/latest/install
+    chmod +x ./install
+    ./install auto
+    systemctl enable codedeploy-agent
+    systemctl start codedeploy-agent
+
+    # Bootstrap landing page (CodeDeploy deployments will overwrite this)
     mkdir -p /opt/msp-portal
     cat > /opt/msp-portal/index.html <<'HTML'
     <!DOCTYPE html>
@@ -147,7 +162,8 @@ resource "aws_instance" "app" {
   EOF
 
   tags = {
-    Name = "${var.project_name}-app-instance"
+    Name      = "${var.project_name}-app-instance"
+    DeployApp = var.project_name
   }
 }
 
