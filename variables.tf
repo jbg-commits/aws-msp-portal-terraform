@@ -105,3 +105,39 @@ variable "db_instance_class" {
   type        = string
   default     = "db.t3.micro"
 }
+
+variable "enable_scheduler" {
+  description = "Whether to auto-stop/start the EC2 instance and RDS database on a business-hours schedule"
+  type        = bool
+  default     = true
+}
+
+variable "schedule_timezone" {
+  description = "IANA timezone the scheduler cron expressions are evaluated in"
+  type        = string
+  default     = "America/New_York"
+}
+
+variable "stop_schedule_expression" {
+  description = "EventBridge Scheduler cron expression for stopping the EC2 instance and RDS database"
+  type        = string
+  default     = "cron(0 20 ? * MON-FRI *)"
+}
+
+variable "start_schedule_expression" {
+  description = "EventBridge Scheduler cron expression for starting the EC2 instance and RDS database"
+  type        = string
+  default     = "cron(0 7 ? * MON-FRI *)"
+}
+
+variable "monthly_budget_limit_usd" {
+  description = "Monthly AWS cost budget limit in USD"
+  type        = string
+  default     = "15"
+}
+
+variable "budget_alert_email" {
+  description = "Email address to notify when spend crosses the budget alert thresholds"
+  type        = string
+  default     = "josephbgillespie@pm.me"
+}

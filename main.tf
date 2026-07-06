@@ -48,3 +48,24 @@ module "compute" {
   instance_type         = var.instance_type
   aws_region            = var.aws_region
 }
+
+module "scheduler" {
+  source = "./modules/scheduler"
+  count  = var.enable_scheduler ? 1 : 0
+
+  project_name              = var.project_name
+  aws_region                = var.aws_region
+  ec2_instance_id           = module.compute.instance_id
+  rds_instance_identifier   = module.database.db_identifier
+  schedule_timezone         = var.schedule_timezone
+  stop_schedule_expression  = var.stop_schedule_expression
+  start_schedule_expression = var.start_schedule_expression
+}
+
+module "budget" {
+  source = "./modules/budget"
+
+  project_name      = var.project_name
+  monthly_limit_usd = var.monthly_budget_limit_usd
+  alert_email       = var.budget_alert_email
+}

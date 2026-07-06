@@ -64,9 +64,9 @@ resource "aws_codedeploy_app" "this" {
 # ── Deployment group ──────────────────────────────────────────────────────────
 
 resource "aws_codedeploy_deployment_group" "this" {
-  app_name               = aws_codedeploy_app.this.name
-  deployment_group_name  = "${var.project_name}-deployment-group"
-  service_role_arn       = aws_iam_role.codedeploy.arn
+  app_name              = aws_codedeploy_app.this.name
+  deployment_group_name = "${var.project_name}-deployment-group"
+  service_role_arn      = aws_iam_role.codedeploy.arn
 
   deployment_style {
     deployment_option = "WITH_TRAFFIC_CONTROL"

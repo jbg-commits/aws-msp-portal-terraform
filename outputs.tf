@@ -91,3 +91,8 @@ output "artifacts_bucket_name" {
   description = "S3 bucket to upload deployment bundles"
   value       = module.deploy.artifacts_bucket_name
 }
+
+output "scheduler_role_arn" {
+  description = "IAM role ARN EventBridge Scheduler assumes to start/stop EC2 and RDS (null if scheduler disabled)"
+  value       = try(module.scheduler[0].scheduler_role_arn, null)
+}
