@@ -13,6 +13,11 @@ output "artifacts_bucket_name" {
   value       = aws_s3_bucket.artifacts.bucket
 }
 
+output "artifacts_bucket_arn" {
+  description = "S3 bucket ARN for deployment bundles"
+  value       = aws_s3_bucket.artifacts.arn
+}
+
 output "codedeploy_service_role_arn" {
   description = "ARN of the CodeDeploy service role"
   value       = aws_iam_role.codedeploy.arn

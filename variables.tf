@@ -141,3 +141,15 @@ variable "budget_alert_email" {
   type        = string
   default     = "josephbgillespie@pm.me"
 }
+
+variable "github_repo_url" {
+  description = "HTTPS URL of the GitHub repo CodeBuild pulls source from"
+  type        = string
+  default     = "https://github.com/jbg-commits/aws-msp-portal-terraform.git"
+}
+
+variable "github_branch" {
+  description = "Branch that triggers a build on push"
+  type        = string
+  default     = "main"
+}

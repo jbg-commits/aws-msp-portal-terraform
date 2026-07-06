@@ -69,3 +69,16 @@ module "budget" {
   monthly_limit_usd = var.monthly_budget_limit_usd
   alert_email       = var.budget_alert_email
 }
+
+module "build" {
+  source = "./modules/build"
+
+  project_name                     = var.project_name
+  aws_region                       = var.aws_region
+  github_repo_url                  = var.github_repo_url
+  github_branch                    = var.github_branch
+  artifacts_bucket_name            = module.deploy.artifacts_bucket_name
+  artifacts_bucket_arn             = module.deploy.artifacts_bucket_arn
+  codedeploy_app_name              = module.deploy.codedeploy_app_name
+  codedeploy_deployment_group_name = module.deploy.deployment_group_name
+}

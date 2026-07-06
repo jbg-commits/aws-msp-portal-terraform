@@ -96,3 +96,8 @@ output "scheduler_role_arn" {
   description = "IAM role ARN EventBridge Scheduler assumes to start/stop EC2 and RDS (null if scheduler disabled)"
   value       = try(module.scheduler[0].scheduler_role_arn, null)
 }
+
+output "codebuild_project_name" {
+  description = "Name of the CodeBuild project"
+  value       = module.build.codebuild_project_name
+}

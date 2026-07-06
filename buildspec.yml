@@ -1,0 +1,10 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+      - zip -r bundle.zip app appspec.yml scripts
+      - aws s3 cp bundle.zip s3://$ARTIFACTS_BUCKET/msp-portal-app.zip
+  post_build:
+    commands:
+      - aws deploy create-deployment --application-name $CODEDEPLOY_APP --deployment-group-name $CODEDEPLOY_GROUP --s3-location bucket=$ARTIFACTS_BUCKET,key=msp-portal-app.zip,bundleType=zip
