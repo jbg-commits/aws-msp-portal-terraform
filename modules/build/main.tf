@@ -62,7 +62,7 @@ resource "aws_iam_role_policy" "codebuild" {
         Sid      = "CodeDeployDefaultConfig"
         Effect   = "Allow"
         Action   = ["codedeploy:GetDeploymentConfig"]
-        Resource = "arn:aws:codedeploy:${var.aws_region}::deploymentconfig:*"
+        Resource = "arn:aws:codedeploy:${var.aws_region}:${data.aws_caller_identity.current.account_id}:deploymentconfig:*"
       }
     ]
   })

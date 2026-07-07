@@ -57,6 +57,8 @@ resource "aws_lb_target_group" "app" {
   protocol = "HTTP"
   vpc_id   = var.vpc_id
 
+  deregistration_delay = 30
+
   health_check {
     path                = "/"
     protocol            = "HTTP"
@@ -108,10 +110,17 @@ resource "aws_instance" "app" {
 
   user_data = <<-EOF
     #!/bin/bash
-    # Install CodeDeploy agent
-    yum install -y ruby wget
+    # Install CodeDeploy agent (retry: NAT route may not be ready in the first
+    # seconds after boot, and chkconfig is required for systemctl enable on AL2023)
+    for i in 1 2 3 4 5; do
+      yum install -y ruby wget chkconfig && break
+      sleep 5
+    done
     cd /tmp
-    wget https://aws-codedeploy-${var.aws_region}.s3.${var.aws_region}.amazonaws.com/latest/install
+    for i in 1 2 3 4 5; do
+      wget https://aws-codedeploy-${var.aws_region}.s3.${var.aws_region}.amazonaws.com/latest/install && break
+      sleep 5
+    done
     chmod +x ./install
     ./install auto
     systemctl enable codedeploy-agent
