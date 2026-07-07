@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}New ticket — MSP Portal{% endblock %}
+{% block content %}
+<h1>New ticket</h1>
+<div class="card" style="max-width:560px;">
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="/tickets">
+    {% if user.is_engineer %}
+    <label for="org_id">Organization</label>
+    <select name="org_id" id="org_id" required>
+      <option value="">Select an organization</option>
+      {% for org in orgs %}
+      <option value="{{ org.id }}">{{ org.name }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+    <label for="title">Title</label>
+    <input type="text" id="title" name="title" required maxlength="200" />
+    <label for="description">Description</label>
+    <textarea id="description" name="description" required></textarea>
+    <button type="submit">Create ticket</button>
+  </form>
+</div>
+{% endblock %}

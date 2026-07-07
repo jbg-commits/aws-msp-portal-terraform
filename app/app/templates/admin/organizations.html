@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Organizations — MSP Portal{% endblock %}
+{% block content %}
+<h1>Organizations</h1>
+<div class="card">
+  <table>
+    <thead><tr><th>Name</th><th>Created</th><th></th></tr></thead>
+    <tbody>
+      {% for org in orgs %}
+      <tr>
+        <td>{{ org.name }}</td>
+        <td class="muted">{{ org.created_at.strftime("%Y-%m-%d") }}</td>
+        <td><a href="/admin/organizations/{{ org.id }}/users/new">Add client user</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="muted">No organizations yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<a class="btn" href="/admin/organizations/new">New organization</a>
+{% endblock %}

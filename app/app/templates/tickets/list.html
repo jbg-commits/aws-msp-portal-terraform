@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Tickets — MSP Portal{% endblock %}
+{% block content %}
+<h1>Tickets</h1>
+
+{% if user.is_engineer %}
+<form method="get" action="/tickets" class="filters card">
+  <div>
+    <label for="org_id">Organization</label>
+    <select name="org_id" id="org_id">
+      <option value="">All</option>
+      {% for org in orgs %}
+      <option value="{{ org.id }}" {% if filter_org_id == org.id %}selected{% endif %}>{{ org.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="status">Status</label>
+    <select name="status" id="status">
+      <option value="">All</option>
+      {% for s in statuses %}
+      <option value="{{ s }}" {% if filter_status == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div><button type="submit">Filter</button></div>
+</form>
+{% endif %}
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        {% if user.is_engineer %}<th>Organization</th>{% endif %}
+        <th>Title</th>
+        <th>Status</th>
+        <th>Priority</th>
+        <th>Created</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ticket, org_name in tickets %}
+      <tr onclick="window.location='/tickets/{{ ticket.id }}'" style="cursor:pointer;">
+        <td>#{{ ticket.id }}</td>
+        {% if user.is_engineer %}<td>{{ org_name }}</td>{% endif %}
+        <td>{{ ticket.title }}</td>
+        <td><span class="badge status-{{ ticket.status }}">{{ ticket.status }}</span></td>
+        <td><span class="priority-{{ ticket.priority }}">{{ ticket.priority }}</span></td>
+        <td class="muted">{{ ticket.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="muted">No tickets.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<a class="btn" href="/tickets/new">New ticket</a>
+{% endblock %}

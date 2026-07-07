@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}New organization — MSP Portal{% endblock %}
+{% block content %}
+<h1>New organization</h1>
+
+{% if created %}
+<div class="card">
+  <div class="success">Organization "{{ created.org_name }}" created.</div>
+  <p>Client login: <strong>{{ created.client_email }}</strong></p>
+  <p>Temporary password (shown once — relay this to the client securely):</p>
+  <p><code style="font-size:1.1rem; background:#0f172a; padding:8px 14px; border-radius:6px; display:inline-block;">{{ created.temp_password }}</code></p>
+  <a class="btn" href="/admin/organizations">Back to organizations</a>
+</div>
+{% else %}
+<div class="card" style="max-width:480px;">
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="/admin/organizations">
+    <label for="org_name">Organization name</label>
+    <input type="text" id="org_name" name="org_name" required maxlength="200" />
+    <label for="client_full_name">First client user — full name</label>
+    <input type="text" id="client_full_name" name="client_full_name" required maxlength="200" />
+    <label for="client_email">First client user — email</label>
+    <input type="email" id="client_email" name="client_email" required />
+    <button type="submit">Create organization</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

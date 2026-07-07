@@ -116,3 +116,19 @@ output "rollback_alarm_names" {
   description = "CloudWatch Alarms that trigger automatic CodeDeploy rollback"
   value       = module.monitoring.alarm_names
 }
+
+output "app_db_url_parameter_name" {
+  description = "SSM parameter name holding the app's runtime (msp_app) DB connection string"
+  value       = module.appconfig.app_db_url_parameter_name
+}
+
+output "db_admin_url_parameter_name" {
+  description = "SSM parameter name holding the migrator (dbadmin) DB connection string -- set manually via aws ssm put-parameter"
+  value       = module.appconfig.db_admin_url_parameter_name
+}
+
+output "appconfig_msp_app_password" {
+  description = "Generated password for the msp_app Postgres role -- needed once for the manual CREATE ROLE bootstrap step"
+  value       = module.appconfig.msp_app_db_password
+  sensitive   = true
+}

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}MSP Portal{% endblock %}</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  {% if user %}
+  <div class="nav">
+    <a class="brand" href="/dashboard">MSP Portal</a>
+    <div class="links">
+      <a href="/dashboard">Dashboard</a>
+      <a href="/tickets">Tickets</a>
+      {% if user.is_engineer %}<a href="/admin/organizations">Organizations</a>{% endif %}
+      <span class="muted">{{ user.full_name }} ({{ user.role }})</span>
+      <form method="post" action="/logout"><button class="link" type="submit">Log out</button></form>
+    </div>
+  </div>
+  {% endif %}
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

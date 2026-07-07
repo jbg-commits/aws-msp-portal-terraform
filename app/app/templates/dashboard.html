@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — MSP Portal{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+
+{% if user.is_engineer %}
+  {% if by_org %}
+    {% for org_name, statuses in by_org.items() %}
+    <div class="card">
+      <h2>{{ org_name }}</h2>
+      {% for status, count in statuses.items() %}
+        <span class="badge status-{{ status }}" style="margin-right:10px;">{{ status }}: {{ count }}</span>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="card muted">No organizations yet. <a href="/admin/organizations/new">Create one.</a></div>
+  {% endif %}
+{% else %}
+  <div class="card">
+    <h2>Your tickets</h2>
+    {% if counts %}
+      {% for status, count in counts.items() %}
+        <span class="badge status-{{ status }}" style="margin-right:10px;">{{ status }}: {{ count }}</span>
+      {% endfor %}
+    {% else %}
+      <p class="muted">No tickets yet.</p>
+    {% endif %}
+    <div><a class="btn" href="/tickets/new">New ticket</a></div>
+  </div>
+{% endif %}
+{% endblock %}

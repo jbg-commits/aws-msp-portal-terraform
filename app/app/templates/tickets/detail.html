@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}#{{ ticket.id }} {{ ticket.title }} — MSP Portal{% endblock %}
+{% block content %}
+<h1>#{{ ticket.id }} — {{ ticket.title }}</h1>
+<p class="muted">{{ org.name }} &bull; opened {{ ticket.created_at.strftime("%Y-%m-%d %H:%M") }}</p>
+
+<div class="card">
+  <span class="badge status-{{ ticket.status }}">{{ ticket.status }}</span>
+  <span class="priority-{{ ticket.priority }}" style="margin-left:12px;">{{ ticket.priority }} priority</span>
+  <p style="margin-top:16px; white-space:pre-wrap;">{{ ticket.description }}</p>
+</div>
+
+{% if user.is_engineer %}
+<div class="card">
+  <h2>Update ticket</h2>
+  <form method="post" action="/tickets/{{ ticket.id }}/status">
+    <label for="status">Status</label>
+    <select name="status" id="status">
+      {% for s in statuses %}
+      <option value="{{ s }}" {% if s == ticket.status %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <label for="priority">Priority</label>
+    <select name="priority" id="priority">
+      {% for p in priorities %}
+      <option value="{{ p }}" {% if p == ticket.priority %}selected{% endif %}>{{ p }}</option>
+      {% endfor %}
+    </select>
+    <label for="assigned_engineer_id">Assigned engineer</label>
+    <select name="assigned_engineer_id" id="assigned_engineer_id">
+      <option value="">Unassigned</option>
+      {% for eng in engineers %}
+      <option value="{{ eng.id }}" {% if eng.id == ticket.assigned_engineer_id %}selected{% endif %}>{{ eng.full_name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Save</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Activity</h2>
+  {% for comment, author_name in comments %}
+  <div class="comment">
+    <div class="meta">{{ author_name }} &bull; {{ comment.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
+    <div style="white-space:pre-wrap;">{{ comment.body }}</div>
+  </div>
+  {% else %}
+  <p class="muted">No comments yet.</p>
+  {% endfor %}
+
+  <form method="post" action="/tickets/{{ ticket.id }}/comments">
+    <label for="body">Add a comment</label>
+    <textarea id="body" name="body" required></textarea>
+    <button type="submit">Post comment</button>
+  </form>
+</div>
+{% endblock %}

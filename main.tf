@@ -60,6 +60,16 @@ module "monitoring" {
   log_retention_days      = var.log_retention_days
 }
 
+module "appconfig" {
+  source = "./modules/appconfig"
+
+  project_name  = var.project_name
+  ec2_role_name = module.compute.ec2_role_name
+  db_endpoint   = module.database.db_endpoint
+  db_name       = var.db_name
+  cookie_secure = var.cookie_secure
+}
+
 module "scheduler" {
   source = "./modules/scheduler"
   count  = var.enable_scheduler ? 1 : 0

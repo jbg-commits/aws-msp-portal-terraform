@@ -159,3 +159,9 @@ variable "log_retention_days" {
   type        = number
   default     = 14
 }
+
+variable "cookie_secure" {
+  description = "Whether session cookies are marked Secure -- requires HTTPS on the ALB. Flip to true once a domain + ACM cert exist."
+  type        = bool
+  default     = false
+}

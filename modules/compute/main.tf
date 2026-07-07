@@ -113,9 +113,10 @@ resource "aws_instance" "app" {
     # Install CodeDeploy agent (retry: NAT route may not be ready in the first
     # seconds after boot, and chkconfig is required for systemctl enable on AL2023)
     for i in 1 2 3 4 5; do
-      yum install -y ruby wget chkconfig && break
+      yum install -y ruby wget chkconfig python3-pip postgresql16 && break
       sleep 5
     done
+    python3 -m venv /opt/msp-portal-venv
     cd /tmp
     for i in 1 2 3 4 5; do
       wget https://aws-codedeploy-${var.aws_region}.s3.${var.aws_region}.amazonaws.com/latest/install && break
@@ -135,33 +136,7 @@ resource "aws_instance" "app" {
     /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
       -a fetch-config -m ec2 -s -c ssm:/${var.project_name}/cwagent-config
 
-    # Bootstrap landing page (CodeDeploy deployments will overwrite this)
     mkdir -p /opt/msp-portal
-    cat > /opt/msp-portal/index.html <<'HTML'
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>MSP Portal</title>
-      <style>
-        body { font-family: sans-serif; background: #0f172a; color: #e2e8f0; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        .card { background: #1e293b; border-radius: 12px; padding: 48px 56px; text-align: center; max-width: 480px; box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
-        h1 { font-size: 2rem; margin: 0 0 8px; color: #38bdf8; }
-        p { color: #94a3b8; margin: 0 0 24px; }
-        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
-        .green { background: #14532d; color: #86efac; }
-      </style>
-    </head>
-    <body>
-      <div class="card">
-        <h1>MSP Portal</h1>
-        <p>AWS three-tier architecture — VPC &bull; ALB &bull; EC2 &bull; RDS PostgreSQL</p>
-        <span class="badge green">&#x2714; Healthy</span>
-      </div>
-    </body>
-    </html>
-    HTML
     cat <<'UNIT' > /etc/systemd/system/app.service
     [Unit]
     Description=MSP Portal app server
@@ -169,7 +144,7 @@ resource "aws_instance" "app" {
 
     [Service]
     WorkingDirectory=/opt/msp-portal
-    ExecStart=/usr/bin/python3 -m http.server ${var.app_port}
+    ExecStart=/opt/msp-portal-venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${var.app_port}
     Restart=always
     StandardOutput=append:/var/log/${var.project_name}/app.log
     StandardError=append:/var/log/${var.project_name}/app.log
@@ -178,7 +153,9 @@ resource "aws_instance" "app" {
     WantedBy=multi-user.target
     UNIT
     systemctl daemon-reload
-    systemctl enable --now app.service
+    systemctl enable app.service
+    # Not started here -- the venv has no app code/uvicorn yet on first boot.
+    # CodeDeploy's ApplicationStart hook starts it after the first deployment.
   EOF
 
   tags = {
