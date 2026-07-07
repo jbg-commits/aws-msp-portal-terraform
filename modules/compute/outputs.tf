@@ -22,3 +22,18 @@ output "instance_id" {
   description = "ID of the app EC2 instance"
   value       = aws_instance.app.id
 }
+
+output "alb_arn_suffix" {
+  description = "ARN suffix of the ALB, for CloudWatch metric dimensions"
+  value       = aws_lb.app.arn_suffix
+}
+
+output "target_group_arn_suffix" {
+  description = "ARN suffix of the target group, for CloudWatch metric dimensions"
+  value       = aws_lb_target_group.app.arn_suffix
+}
+
+output "ec2_role_name" {
+  description = "Name of the EC2 instance IAM role"
+  value       = aws_iam_role.ec2_ssm.name
+}

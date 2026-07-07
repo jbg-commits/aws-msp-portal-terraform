@@ -21,6 +21,7 @@ module "deploy" {
   project_name      = var.project_name
   aws_region        = var.aws_region
   target_group_name = module.compute.target_group_name
+  alarm_names       = module.monitoring.alarm_names
 }
 
 module "database" {
@@ -47,6 +48,16 @@ module "compute" {
   app_port              = var.app_port
   instance_type         = var.instance_type
   aws_region            = var.aws_region
+}
+
+module "monitoring" {
+  source = "./modules/monitoring"
+
+  project_name            = var.project_name
+  alb_arn_suffix          = module.compute.alb_arn_suffix
+  target_group_arn_suffix = module.compute.target_group_arn_suffix
+  ec2_role_name           = module.compute.ec2_role_name
+  log_retention_days      = var.log_retention_days
 }
 
 module "scheduler" {

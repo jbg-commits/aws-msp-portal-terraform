@@ -12,3 +12,9 @@ variable "target_group_name" {
   description = "ALB target group name for deployment group traffic control"
   type        = string
 }
+
+variable "alarm_names" {
+  description = "CloudWatch Alarm names that trigger automatic rollback when in ALARM state"
+  type        = list(string)
+  default     = []
+}

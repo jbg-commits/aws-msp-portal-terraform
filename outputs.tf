@@ -101,3 +101,18 @@ output "codebuild_project_name" {
   description = "Name of the CodeBuild project"
   value       = module.build.codebuild_project_name
 }
+
+output "app_log_group_name" {
+  description = "CloudWatch Log Group the app's stdout/stderr is streamed to"
+  value       = module.monitoring.app_log_group_name
+}
+
+output "codedeploy_agent_log_group_name" {
+  description = "CloudWatch Log Group the CodeDeploy agent's log is streamed to"
+  value       = module.monitoring.codedeploy_agent_log_group_name
+}
+
+output "rollback_alarm_names" {
+  description = "CloudWatch Alarms that trigger automatic CodeDeploy rollback"
+  value       = module.monitoring.alarm_names
+}

@@ -126,6 +126,15 @@ resource "aws_instance" "app" {
     systemctl enable codedeploy-agent
     systemctl start codedeploy-agent
 
+    # Install and start the CloudWatch Agent (config fetched from SSM Parameter Store)
+    mkdir -p /var/log/${var.project_name}
+    for i in 1 2 3 4 5; do
+      yum install -y amazon-cloudwatch-agent && break
+      sleep 5
+    done
+    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+      -a fetch-config -m ec2 -s -c ssm:/${var.project_name}/cwagent-config
+
     # Bootstrap landing page (CodeDeploy deployments will overwrite this)
     mkdir -p /opt/msp-portal
     cat > /opt/msp-portal/index.html <<'HTML'
@@ -162,6 +171,8 @@ resource "aws_instance" "app" {
     WorkingDirectory=/opt/msp-portal
     ExecStart=/usr/bin/python3 -m http.server ${var.app_port}
     Restart=always
+    StandardOutput=append:/var/log/${var.project_name}/app.log
+    StandardError=append:/var/log/${var.project_name}/app.log
 
     [Install]
     WantedBy=multi-user.target

@@ -89,7 +89,12 @@ resource "aws_codedeploy_deployment_group" "this" {
 
   auto_rollback_configuration {
     enabled = true
-    events  = ["DEPLOYMENT_FAILURE"]
+    events  = ["DEPLOYMENT_FAILURE", "DEPLOYMENT_STOP_ON_ALARM"]
+  }
+
+  alarm_configuration {
+    alarms  = var.alarm_names
+    enabled = length(var.alarm_names) > 0
   }
 
   depends_on = [aws_iam_role_policy_attachment.codedeploy]

@@ -153,3 +153,9 @@ variable "github_branch" {
   type        = string
   default     = "main"
 }
+
+variable "log_retention_days" {
+  description = "Number of days to retain CloudWatch Logs"
+  type        = number
+  default     = 14
+}
