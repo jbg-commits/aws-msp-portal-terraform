@@ -113,10 +113,10 @@ resource "aws_instance" "app" {
     # Install CodeDeploy agent (retry: NAT route may not be ready in the first
     # seconds after boot, and chkconfig is required for systemctl enable on AL2023)
     for i in 1 2 3 4 5; do
-      yum install -y ruby wget chkconfig python3-pip postgresql16 && break
+      yum install -y ruby wget chkconfig python3.11 postgresql16 && break
       sleep 5
     done
-    python3 -m venv /opt/msp-portal-venv
+    python3.11 -m venv /opt/msp-portal-venv
     cd /tmp
     for i in 1 2 3 4 5; do
       wget https://aws-codedeploy-${var.aws_region}.s3.${var.aws_region}.amazonaws.com/latest/install && break

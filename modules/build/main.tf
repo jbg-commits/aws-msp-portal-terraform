@@ -50,6 +50,7 @@ resource "aws_iam_role_policy" "codebuild" {
         Action = [
           "codedeploy:CreateDeployment",
           "codedeploy:GetApplication",
+          "codedeploy:GetApplicationRevision",
           "codedeploy:GetDeploymentGroup",
           "codedeploy:RegisterApplicationRevision",
         ]
