@@ -35,15 +35,18 @@ class CurrentUser:
 def _set_rls_context(db: Session, role: str, org_id: int | None) -> None:
     """Scope the rest of THIS transaction's queries to this caller.
 
-    Uses SET LOCAL (transaction-scoped, auto-cleared on commit/rollback) via
-    bound parameters -- never SET, and never string-interpolated -- because
-    the underlying connection is pooled and reused across different users'
-    requests. This must run before any query against organizations/tickets/
-    ticket_comments (the RLS-protected tables) in this request.
+    SET/SET LOCAL are Postgres utility statements, not regular SQL -- they
+    do not accept bind parameters for the value (psycopg2 raises a syntax
+    error if you try). set_config() is an ordinary function call and does
+    accept parameters; is_local=true makes it behave exactly like SET LOCAL
+    (transaction-scoped, auto-cleared on commit/rollback) -- required
+    because the underlying connection is pooled and reused across different
+    users' requests. This must run before any query against organizations/
+    tickets/ticket_comments (the RLS-protected tables) in this request.
     """
-    db.execute(text("SET LOCAL app.current_role = :role"), {"role": role})
+    db.execute(text("SELECT set_config('app.current_role', :role, true)"), {"role": role})
     db.execute(
-        text("SET LOCAL app.current_org_id = :org_id"),
+        text("SELECT set_config('app.current_org_id', :org_id, true)"),
         {"org_id": str(org_id) if org_id is not None else "0"},
     )
 
