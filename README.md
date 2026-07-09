@@ -58,3 +58,30 @@ docker run --rm -it postgres:16 psql -h host.docker.internal -p 5433 -U msp_app 
 
 Treat this as read-only in practice -- there's no `docker compose down -v`
 undo button against the real database.
+
+## Running the app locally against the REAL database
+
+If you want `localhost:8081` itself to read/write the real AWS database
+(not a local sandbox), use `docker-compose.aws.yml` instead of the default
+compose file:
+
+1. In one terminal, open the tunnel and leave it running:
+   ```
+   ./tools/rds-tunnel.sh
+   ```
+2. In another terminal, from the repo root:
+   ```
+   ./tools/run-against-aws.sh
+   ```
+
+`run-against-aws.sh` fetches the real `msp_app`/`dbadmin` credentials fresh
+from SSM every run (never written to disk or git) and points the app at
+`host.docker.internal:5433` -- the tunnel from step 1. The app then runs
+exactly like `docker compose up`, except every organization, ticket, and
+user you create through `localhost:8081` is written directly to the real
+RDS instance, the same as if you'd used the real ALB URL.
+
+There is no local/prod separation in this mode -- it behaves like an
+ordinary hosted application with a local frontend. Stop it with Ctrl+C or
+`docker compose -f docker-compose.aws.yml down` (no `-v`; there's no local
+volume to reset in this mode since nothing is stored locally).

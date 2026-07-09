@@ -1,0 +1,15 @@
+# Runs the app against the REAL AWS RDS database instead of a local
+# container. No credentials live in this file -- DATABASE_URL and
+# DATABASE_ADMIN_URL are supplied at `docker compose up` time via
+# tools/run-against-aws.sh, which fetches them fresh from SSM each run.
+#
+# Requires tools/rds-tunnel.sh running in another terminal first.
+services:
+  app:
+    build: ./app
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_ADMIN_URL: ${DATABASE_ADMIN_URL}
+      COOKIE_SECURE: "false"
+    ports:
+      - "8081:8080"
