@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from app.auth.dependencies import Forbidden, NotAuthenticated
 from app.routers import admin, auth, dashboard, tickets
 
-app = FastAPI(title="MSP Portal")
+app = FastAPI(title="Hive")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")

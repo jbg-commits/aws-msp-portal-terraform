@@ -3,13 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}MSP Portal{% endblock %}</title>
+  <title>{% block title %}Hive{% endblock %}</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
   {% if user %}
   <div class="nav">
-    <a class="brand" href="/dashboard">MSP Portal</a>
+    <a class="hive-brand" href="/dashboard">
+      <svg class="hive-logo" viewBox="0 0 40 40" width="26" height="26">
+        <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="#f5b700" />
+        <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="#0a0806" stroke-width="1.5" />
+        <rect x="4" y="16" width="32" height="3" fill="#0a0806" opacity="0.85" />
+        <rect x="4" y="23" width="32" height="3" fill="#0a0806" opacity="0.85" />
+      </svg>
+      <span class="hive-wordmark">Hive</span>
+    </a>
     <div class="links">
       <a href="/dashboard">Dashboard</a>
       <a href="/tickets">Tickets</a>
