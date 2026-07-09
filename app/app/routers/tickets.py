@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import CurrentUser, get_current_user, require_engineer
@@ -15,6 +15,28 @@ from app.models.user import User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+
+
+def _next_display_id(db: Session) -> str:
+    """Atomically claims the next T[YYMMDD].[N] number for today, where N
+    resets to 1 each day and is shared globally across all organizations.
+
+    INSERT ... ON CONFLICT DO UPDATE is a single atomic statement -- Postgres
+    serializes concurrent claims for the same day at the row level, so two
+    tickets created in the same instant can never get the same number
+    without any application-level locking.
+    """
+    row = db.execute(
+        text(
+            """
+            INSERT INTO daily_ticket_sequences (day, last_sequence)
+            VALUES (CURRENT_DATE, 1)
+            ON CONFLICT (day) DO UPDATE SET last_sequence = daily_ticket_sequences.last_sequence + 1
+            RETURNING day, last_sequence
+            """
+        )
+    ).one()
+    return f"T{row.day.strftime('%y%m%d')}.{row.last_sequence}"
 
 
 @router.get("/tickets", response_class=HTMLResponse)
@@ -83,6 +105,7 @@ def create_ticket(
 
     ticket = Ticket(
         org_id=target_org_id,
+        display_id=_next_display_id(db),
         title=title.strip(),
         description=description.strip(),
         created_by=user.id,

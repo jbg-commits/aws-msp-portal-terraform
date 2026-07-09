@@ -42,7 +42,7 @@
     <tbody>
       {% for ticket, org_name in tickets %}
       <tr onclick="window.location='/tickets/{{ ticket.id }}'" style="cursor:pointer;">
-        <td>#{{ ticket.id }}</td>
+        <td>{{ ticket.display_id }}</td>
         {% if user.is_engineer %}<td>{{ org_name }}</td>{% endif %}
         <td>{{ ticket.title }}</td>
         <td><span class="badge status-{{ ticket.status }}">{{ ticket.status }}</span></td>
