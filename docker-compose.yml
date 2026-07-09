@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: dbadmin
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: mspportal
+    volumes:
+      - msp_portal_db_data:/var/lib/postgresql/data
+      - ./docker/init-msp-app-role.sql:/docker-entrypoint-initdb.d/init-msp-app-role.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbadmin -d mspportal"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  app:
+    build: ./app
+    environment:
+      DATABASE_URL: postgresql+psycopg2://msp_app:localdev@db:5432/mspportal
+      DATABASE_ADMIN_URL: postgresql+psycopg2://dbadmin:localdev@db:5432/mspportal
+      COOKIE_SECURE: "false"
+    ports:
+      - "8081:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  msp_portal_db_data:
