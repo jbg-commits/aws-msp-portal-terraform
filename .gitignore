@@ -6,3 +6,6 @@
 crash.log
 __pycache__/
 *.pyc
+desktop/node_modules/
+desktop/dist/
+desktop/build/*.ico

@@ -1,0 +1,42 @@
+{
+  "name": "hive-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hive desktop client -- wraps the Hive ticketing web app in a native Windows window with a system tray icon.",
+  "main": "src/main.js",
+  "scripts": {
+    "icons": "node build/generate-icons.js",
+    "prestart": "npm run icons",
+    "start": "electron .",
+    "predist": "npm run icons",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "sharp": "^0.33.0",
+    "png-to-ico": "^2.1.8"
+  },
+  "build": {
+    "appId": "com.hive.desktop",
+    "productName": "Hive",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": ["src/**/*", "package.json"],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Hive",
+      "uninstallDisplayName": "Hive"
+    }
+  }
+}
