@@ -1,9 +1,45 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, shell } = require("electron");
+const { app, BrowserWindow, Tray, Menu, nativeImage, shell, ipcMain } = require("electron");
 const path = require("path");
+const si = require("systeminformation");
 const { HIVE_LOGIN_URL } = require("./config");
 
 const ICON_PATH = path.join(__dirname, "..", "build", "icon.ico");
 const TRAY_ICON_PATH = path.join(__dirname, "..", "build", "tray.ico");
+const PRELOAD_PATH = path.join(__dirname, "preload.js");
+
+// Registered once at module scope, not inside createWindow() -- the renderer
+// calls this via the preload's contextBridge whenever it needs a fresh
+// snapshot (currently: ticket creation from app/app/templates/tickets/new.html).
+ipcMain.handle("hive:get-system-summary", async () => {
+  try {
+    const [cpu, currentLoad, mem, fsSize, osInfo] = await Promise.all([
+      si.cpu(),
+      si.currentLoad(),
+      si.mem(),
+      si.fsSize(),
+      si.osInfo(),
+    ]);
+    const mainDisk = [...fsSize].sort((a, b) => b.size - a.size)[0] || {};
+    return {
+      collectedAt: new Date().toISOString(),
+      hostname: osInfo.hostname,
+      os: { platform: process.platform, distro: osInfo.distro, release: osInfo.release },
+      cpu: {
+        model: `${cpu.manufacturer} ${cpu.brand}`.trim(),
+        loadPercent: Math.round(currentLoad.currentLoad * 10) / 10,
+      },
+      memory: { totalBytes: mem.total, usedBytes: mem.used, freeBytes: mem.free },
+      disk: {
+        mount: mainDisk.mount || null,
+        totalBytes: mainDisk.size || null,
+        freeBytes: mainDisk.available || null,
+      },
+    };
+  } catch (err) {
+    console.error("system summary collection failed:", err);
+    return null;
+  }
+});
 
 let mainWindow = null;
 let tray = null;
@@ -50,6 +86,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      preload: PRELOAD_PATH,
     },
   });
 

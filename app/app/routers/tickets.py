@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -9,12 +11,39 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import CurrentUser, get_current_user, require_engineer
 from app.db.session import get_db
 from app.models.organization import Organization
+from app.models.remote_session import RemoteSession
 from app.models.ticket import PRIORITIES, STATUSES, Ticket
 from app.models.ticket_comment import TicketComment
 from app.models.user import User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+
+
+def _finalize_remote_sessions(db: Session, ticket_id: int) -> None:
+    """Lazily closes out any remote session on this ticket whose 30-second
+    reconnect grace period has actually elapsed.
+
+    A single atomic, idempotent UPDATE -- safe to call unconditionally on
+    every request that touches remote sessions for this ticket, the same
+    lazy-on-next-request idiom _next_display_id uses instead of a cron job.
+    ended_at is fixed at disconnect+30s exactly once here, rather than ever
+    being computed fresh at read time, so the billable boundary doesn't
+    drift depending on when someone happens to look at the page.
+    """
+    db.execute(
+        text(
+            """
+            UPDATE remote_sessions
+            SET ended_at = disconnected_at + interval '30 seconds'
+            WHERE ticket_id = :ticket_id
+              AND ended_at IS NULL
+              AND disconnected_at IS NOT NULL
+              AND now() - disconnected_at >= interval '30 seconds'
+            """
+        ),
+        {"ticket_id": ticket_id},
+    )
 
 
 def _next_display_id(db: Session) -> str:
@@ -87,6 +116,7 @@ def create_ticket(
     title: str = Form(...),
     description: str = Form(...),
     org_id: int | None = Form(None),
+    system_summary: str | None = Form(None),
     user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -103,12 +133,25 @@ def create_ticket(
     else:
         target_org_id = user.org_id
 
+    # Never trust this blindly -- a malformed/tampered value should degrade
+    # to "no summary" rather than block ticket creation. Absent entirely for
+    # tickets created from a plain browser (window.hiveDesktop doesn't exist
+    # there, so the hidden field is never populated).
+    parsed_summary = None
+    if system_summary:
+        try:
+            candidate = json.loads(system_summary)
+            parsed_summary = candidate if isinstance(candidate, dict) else None
+        except (json.JSONDecodeError, TypeError):
+            parsed_summary = None
+
     ticket = Ticket(
         org_id=target_org_id,
         display_id=_next_display_id(db),
         title=title.strip(),
         description=description.strip(),
         created_by=user.id,
+        system_summary=parsed_summary,
     )
     db.add(ticket)
     db.flush()
@@ -131,6 +174,8 @@ def ticket_detail(
     if ticket is None:
         raise HTTPException(status_code=404)
 
+    _finalize_remote_sessions(db, ticket_id)
+
     org = db.get(Organization, ticket.org_id)
     comments = db.execute(
         select(TicketComment, User.full_name)
@@ -139,6 +184,20 @@ def ticket_detail(
         .order_by(TicketComment.created_at.asc())
     ).all()
     engineers = db.execute(select(User).where(User.role == "engineer")).scalars().all() if user.is_engineer else []
+
+    remote_sessions = db.execute(
+        select(RemoteSession, User.full_name)
+        .join(User, User.id == RemoteSession.engineer_id)
+        .where(RemoteSession.ticket_id == ticket_id)
+        .order_by(RemoteSession.started_at.desc())
+    ).all()
+
+    current_session, session_history = None, remote_sessions
+    if remote_sessions:
+        top_session, _ = remote_sessions[0]
+        if top_session.ended_at is None or top_session.summary is None:
+            current_session = remote_sessions[0]
+            session_history = remote_sessions[1:]
 
     return templates.TemplateResponse(
         request,
@@ -151,6 +210,8 @@ def ticket_detail(
             "engineers": engineers,
             "statuses": STATUSES,
             "priorities": PRIORITIES,
+            "current_session": current_session,
+            "session_history": session_history,
         },
     )
 
@@ -199,5 +260,106 @@ def update_ticket_status(
     ticket.status = status
     ticket.priority = priority
     ticket.assigned_engineer_id = int(assigned_engineer_id) if assigned_engineer_id else None
+
+    return RedirectResponse(f"/tickets/{ticket_id}", status_code=303)
+
+
+@router.post("/tickets/{ticket_id}/remote-sessions/start")
+def start_remote_session(
+    ticket_id: int,
+    user: CurrentUser = Depends(require_engineer),
+    db: Session = Depends(get_db),
+):
+    # Hive does not detect the actual remote-support connection itself (that
+    # happens in whatever external tool -- GoToAssist, Datto RMM, etc. -- the
+    # Engineer is already using); this only records what the Engineer tells
+    # it via this click.
+    ticket = db.get(Ticket, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404)
+
+    _finalize_remote_sessions(db, ticket_id)
+
+    # Resume within the 30s grace window if one exists -- same continuous
+    # billable session, not a new one.
+    resumed = db.execute(
+        text(
+            """
+            UPDATE remote_sessions SET disconnected_at = NULL
+            WHERE ticket_id = :ticket_id AND ended_at IS NULL AND disconnected_at IS NOT NULL
+            RETURNING id
+            """
+        ),
+        {"ticket_id": ticket_id},
+    ).first()
+
+    if resumed is None:
+        # No open/resumable session -- start a new one. The partial unique
+        # index (one open session per ticket) makes this atomic against a
+        # concurrent double-click with zero row locking, same idiom as
+        # _next_display_id's INSERT ... ON CONFLICT.
+        db.execute(
+            text(
+                """
+                INSERT INTO remote_sessions (ticket_id, engineer_id)
+                VALUES (:ticket_id, :engineer_id)
+                ON CONFLICT (ticket_id) WHERE ended_at IS NULL DO NOTHING
+                """
+            ),
+            {"ticket_id": ticket_id, "engineer_id": user.id},
+        )
+
+    return RedirectResponse(f"/tickets/{ticket_id}", status_code=303)
+
+
+@router.post("/tickets/{ticket_id}/remote-sessions/end")
+def end_remote_session(
+    ticket_id: int,
+    user: CurrentUser = Depends(require_engineer),
+    db: Session = Depends(get_db),
+):
+    ticket = db.get(Ticket, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404)
+
+    # Idempotent -- a double-click just no-ops on the second attempt since
+    # disconnected_at is no longer NULL.
+    db.execute(
+        text(
+            """
+            UPDATE remote_sessions SET disconnected_at = now()
+            WHERE ticket_id = :ticket_id AND ended_at IS NULL AND disconnected_at IS NULL
+            """
+        ),
+        {"ticket_id": ticket_id},
+    )
+
+    return RedirectResponse(f"/tickets/{ticket_id}", status_code=303)
+
+
+@router.post("/tickets/{ticket_id}/remote-sessions/{session_id}/summary")
+def submit_remote_session_summary(
+    ticket_id: int,
+    session_id: int,
+    summary: str = Form(...),
+    user: CurrentUser = Depends(require_engineer),
+    db: Session = Depends(get_db),
+):
+    ticket = db.get(Ticket, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404)
+
+    _finalize_remote_sessions(db, ticket_id)
+
+    session = db.get(RemoteSession, session_id)
+    if session is None or session.ticket_id != ticket_id:
+        raise HTTPException(status_code=404)
+
+    # Server-side enforcement, not just a hidden UI element -- a session
+    # can only be summarized once it's actually finalized.
+    if session.ended_at is None:
+        raise HTTPException(status_code=400, detail="Session not finalized yet")
+
+    session.summary = summary.strip()
 
     return RedirectResponse(f"/tickets/{ticket_id}", status_code=303)

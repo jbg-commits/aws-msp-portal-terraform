@@ -18,7 +18,24 @@
     <input type="text" id="title" name="title" required maxlength="200" />
     <label for="description">Description</label>
     <textarea id="description" name="description" required></textarea>
+    <input type="hidden" name="system_summary" id="system_summary" />
     <button type="submit">Create ticket</button>
   </form>
 </div>
+<script>
+  (function () {
+    var form = document.querySelector('form[action="/tickets"]');
+    var hiddenField = document.getElementById("system_summary");
+    if (!form || !hiddenField || !window.hiveDesktop) return; // plain browser: submit as-is
+
+    form.addEventListener("submit", function (event) {
+      if (hiddenField.value) return; // already populated by a prior programmatic submit
+      event.preventDefault();
+      window.hiveDesktop.getSystemSummary()
+        .then(function (summary) { hiddenField.value = summary ? JSON.stringify(summary) : ""; })
+        .catch(function () { hiddenField.value = ""; })
+        .finally(function () { form.submit(); });
+    });
+  })();
+</script>
 {% endblock %}

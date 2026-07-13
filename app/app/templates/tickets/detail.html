@@ -10,6 +10,19 @@
   <p style="margin-top:16px; white-space:pre-wrap;">{{ ticket.description }}</p>
 </div>
 
+{% if ticket.system_summary %}
+<div class="card">
+  <h2>System summary (collected at ticket creation via Hive Desktop)</h2>
+  <table>
+    <tr><th>Hostname</th><td>{{ ticket.system_summary.hostname }}</td></tr>
+    <tr><th>OS</th><td>{{ ticket.system_summary.os.distro }} {{ ticket.system_summary.os.release }}</td></tr>
+    <tr><th>CPU</th><td>{{ ticket.system_summary.cpu.model }} ({{ ticket.system_summary.cpu.loadPercent }}% load)</td></tr>
+    <tr><th>Memory</th><td>{{ (ticket.system_summary.memory.usedBytes / 1073741824) | round(1) }} / {{ (ticket.system_summary.memory.totalBytes / 1073741824) | round(1) }} GB used</td></tr>
+    <tr><th>Disk ({{ ticket.system_summary.disk.mount }})</th><td>{{ (ticket.system_summary.disk.freeBytes / 1073741824) | round(1) }} GB free of {{ (ticket.system_summary.disk.totalBytes / 1073741824) | round(1) }} GB</td></tr>
+  </table>
+</div>
+{% endif %}
+
 {% if user.is_engineer %}
 <div class="card">
   <h2>Update ticket</h2>
@@ -36,7 +49,56 @@
     <button type="submit">Save</button>
   </form>
 </div>
+
+<div class="card">
+  <h2>Remote Session</h2>
+  <p class="muted">Tracks billable time around remoting in via your external tool (GoToAssist, Datto RMM, etc.) —
+     Hive does not detect the connection itself; it only records what you tell it by clicking Start/End.</p>
+  {% if current_session %}
+    {% set sess, eng_name = current_session %}
+    {% if sess.disconnected_at is none %}
+      <span class="badge status-in_progress">Active</span>
+      <p class="muted">Started {{ sess.started_at.strftime("%Y-%m-%d %H:%M:%S") }} by {{ eng_name }}</p>
+      <p>Elapsed: <strong id="rs-elapsed" data-started="{{ sess.started_at.isoformat() }}">--:--:--</strong></p>
+      <form method="post" action="/tickets/{{ ticket.id }}/remote-sessions/end">
+        <button type="submit">End Session</button>
+      </form>
+    {% elif sess.ended_at is none %}
+      <span class="badge status-waiting_on_client">Disconnected</span>
+      <p class="muted">Click "Start Remote Session" again within 30 seconds to resume this as the same billable session.</p>
+      <p>Time left to resume: <strong id="rs-grace" data-disconnected="{{ sess.disconnected_at.isoformat() }}">--</strong>s</p>
+      <form method="post" action="/tickets/{{ ticket.id }}/remote-sessions/start">
+        <button type="submit">Start Remote Session</button>
+      </form>
+    {% else %}
+      <span class="badge status-resolved">Session ended</span>
+      <p class="muted">{{ eng_name }} &bull; {{ sess.started_at.strftime("%H:%M:%S") }}–{{ sess.ended_at.strftime("%H:%M:%S") }}
+         ({{ sess.ended_at - sess.started_at }})</p>
+      <form method="post" action="/tickets/{{ ticket.id }}/remote-sessions/{{ sess.id }}/summary">
+        <label for="summary">What did you do during this session?</label>
+        <textarea id="summary" name="summary" required></textarea>
+        <button type="submit">Save summary</button>
+      </form>
+    {% endif %}
+  {% else %}
+    <form method="post" action="/tickets/{{ ticket.id }}/remote-sessions/start">
+      <button type="submit">Start Remote Session</button>
+    </form>
+  {% endif %}
+</div>
 {% endif %}
+
+<div class="card">
+  <h2>Remote session history</h2>
+  {% for sess, eng_name in session_history %}
+  <div class="comment">
+    <div class="meta">{{ eng_name }} &bull; {{ sess.started_at.strftime("%Y-%m-%d %H:%M") }} &bull; {{ sess.ended_at - sess.started_at }}</div>
+    <div style="white-space:pre-wrap;">{{ sess.summary or "No summary provided." }}</div>
+  </div>
+  {% else %}
+  <p class="muted">No remote sessions yet.</p>
+  {% endfor %}
+</div>
 
 <div class="card">
   <h2>Activity</h2>
@@ -55,4 +117,6 @@
     <button type="submit">Post comment</button>
   </form>
 </div>
+
+<script src="/static/remote-session.js"></script>
 {% endblock %}
