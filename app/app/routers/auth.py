@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import SESSION_COOKIE_NAME, CurrentUser, get_current_user
+from app.auth.dependencies import SESSION_COOKIE_NAME, CurrentUser, _org_login_ok, get_current_user
 from app.auth.security import generate_session_token, verify_password
 from app.config import get_settings
 from app.db.session import get_db
@@ -46,6 +46,11 @@ def login_submit(
     user_row = db.execute(
         text("SELECT role, org_id FROM users WHERE id = :id"), {"id": row.id}
     ).first()
+
+    if not _org_login_ok(db, user_row.role, user_row.org_id):
+        return templates.TemplateResponse(
+            request, "login.html", {"error": "Invalid email or password."}, status_code=401
+        )
 
     token = generate_session_token()
     db.execute(

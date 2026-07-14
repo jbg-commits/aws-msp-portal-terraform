@@ -51,6 +51,30 @@ def _set_rls_context(db: Session, role: str, org_id: int | None) -> None:
     )
 
 
+def _org_login_ok(db: Session, role: str, org_id: int | None) -> bool:
+    """Engineers (org_id NULL) are always ok; clients are gated on their
+    org's is_active. organizations carries RLS and no caller context exists
+    yet at either call site (login, and the top of get_current_user before
+    _set_rls_context runs) -- current_setting() returns NULL with no context
+    set, closing every USING clause on organizations. Briefly presenting as
+    'engineer' is safe: the result is only used as an internal boolean gate,
+    never returned to the caller, and is overwritten by the real role right
+    after (get_current_user) or discarded at transaction end (failed login).
+    """
+    if role != "client":
+        return True
+    # Postgres doesn't guarantee short-circuit evaluation of the AND inside
+    # organizations_client_own_org's USING clause -- if app.current_org_id
+    # is left unset, the ::bigint cast in that policy can still be evaluated
+    # against an empty string and raise, even though current_role='engineer'
+    # should make the whole clause irrelevant. Always set both configs
+    # together, same as _set_rls_context does.
+    db.execute(text("SELECT set_config('app.current_role', 'engineer', true)"))
+    db.execute(text("SELECT set_config('app.current_org_id', '0', true)"))
+    row = db.execute(text("SELECT is_active FROM organizations WHERE id = :org_id"), {"org_id": org_id}).first()
+    return bool(row and row.is_active)
+
+
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> CurrentUser:
     token = request.cookies.get(SESSION_COOKIE_NAME)
     if not token:
@@ -73,7 +97,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> Current
         {"token": token},
     ).first()
 
-    if row is None or not row.is_active:
+    if row is None or not row.is_active or not _org_login_ok(db, row.role, row.org_id):
         raise NotAuthenticated()
 
     # Sliding 8h idle expiry, capped at 7 days from session creation.

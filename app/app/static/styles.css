@@ -126,6 +126,8 @@ button:hover, .btn:hover {
   background: var(--hive-surface-hover); color: var(--hive-text); border: 1px solid var(--hive-border);
 }
 .btn-secondary:hover { background: var(--hive-border); }
+.btn-danger { background: var(--hive-rust); color: var(--hive-text); }
+.btn-danger:hover { background: #c93c14; }
 
 .error { background: #3a0f08; border: 1px solid var(--hive-rust); color: #ff9d7a; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
 .success { background: #1c2408; border: 1px solid var(--hive-olive); color: var(--hive-olive); padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }

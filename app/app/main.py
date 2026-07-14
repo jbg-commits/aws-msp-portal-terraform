@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.auth.dependencies import Forbidden, NotAuthenticated
-from app.routers import admin, auth, dashboard, tickets
+from app.routers import account, admin, auth, dashboard, tickets
 
 app = FastAPI(title="Hive")
 
@@ -37,3 +37,4 @@ app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(tickets.router)
 app.include_router(admin.router)
+app.include_router(account.router)

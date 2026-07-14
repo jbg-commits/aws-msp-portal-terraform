@@ -4,6 +4,15 @@
 <h1>{{ ticket.display_id }} — {{ ticket.title }}</h1>
 <p class="muted">{{ org.name }} &bull; opened {{ ticket.created_at.strftime("%Y-%m-%d %H:%M") }}</p>
 
+{% if ticket.deleted_at %}
+<div class="card">
+  <div class="error">This ticket was deleted on {{ ticket.deleted_at.strftime("%Y-%m-%d %H:%M") }}.</div>
+  <form method="post" action="/tickets/{{ ticket.id }}/restore">
+    <button type="submit">Restore ticket</button>
+  </form>
+</div>
+{% endif %}
+
 <div class="card">
   <span class="badge status-{{ ticket.status }}">{{ ticket.status }}</span>
   <span class="priority-{{ ticket.priority }}" style="margin-left:12px;">{{ ticket.priority }} priority</span>
@@ -49,6 +58,16 @@
     <button type="submit">Save</button>
   </form>
 </div>
+
+{% if not ticket.deleted_at %}
+<div class="card">
+  <h2>Delete ticket</h2>
+  <p class="muted">Removes this ticket from normal views. It can be restored later from the deleted list.</p>
+  <form method="post" action="/tickets/{{ ticket.id }}/delete" onsubmit="return confirm('Delete this ticket? It can be restored later from the deleted list.');">
+    <button type="submit" class="btn-danger">Delete ticket</button>
+  </form>
+</div>
+{% endif %}
 
 <div class="card">
   <h2>Remote Session</h2>

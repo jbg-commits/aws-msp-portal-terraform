@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}New engineer — Hive{% endblock %}
+{% block content %}
+<h1>New engineer</h1>
+
+{% if created %}
+<div class="card">
+  <div class="success">Engineer account created.</div>
+  <p>Login: <strong>{{ created.email }}</strong></p>
+  <p>Temporary password (shown once — relay this securely):</p>
+  <p><code style="font-size:1.1rem; background:#0f172a; padding:8px 14px; border-radius:6px; display:inline-block;">{{ created.temp_password }}</code></p>
+  <a class="btn" href="/admin/engineers">Back to engineers</a>
+</div>
+{% else %}
+<div class="card" style="max-width:480px;">
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="/admin/engineers">
+    <label for="full_name">Full name</label>
+    <input type="text" id="full_name" name="full_name" required maxlength="200" />
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" required />
+    <button type="submit">Create engineer</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

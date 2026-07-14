@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Engineers — Hive{% endblock %}
+{% block content %}
+<h1>Engineers</h1>
+
+{% if created %}
+<div class="card">
+  <div class="success">Password reset.</div>
+  <p>Login: <strong>{{ created.email }}</strong></p>
+  <p>Temporary password (shown once — relay this securely):</p>
+  <p><code style="font-size:1.1rem; background:#0f172a; padding:8px 14px; border-radius:6px; display:inline-block;">{{ created.temp_password }}</code></p>
+</div>
+{% endif %}
+
+<div class="card">
+  <table>
+    <thead><tr><th>Name</th><th>Email</th><th></th></tr></thead>
+    <tbody>
+      {% for eng in engineers %}
+      <tr>
+        <td>{{ eng.full_name }}</td>
+        <td>{{ eng.email }}</td>
+        <td>
+          <form method="post" action="/admin/engineers/{{ eng.id }}/reset-password" style="display:inline;">
+            <button type="submit" class="btn-secondary">Reset password</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="muted">No engineers yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<a class="btn" href="/admin/engineers/new">New engineer</a>
+{% endblock %}

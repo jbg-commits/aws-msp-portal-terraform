@@ -73,10 +73,16 @@ def list_tickets(
     request: Request,
     org_id: int | None = None,
     status: str | None = None,
+    deleted: bool = False,
     user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     query = select(Ticket, Organization.name).join(Organization, Organization.id == Ticket.org_id)
+
+    # Never trust the raw query param for a Client -- the trash view is
+    # Engineer-only, same discipline as org_id/status below.
+    show_deleted = deleted and user.is_engineer
+    query = query.where(Ticket.deleted_at.is_not(None)) if show_deleted else query.where(Ticket.deleted_at.is_(None))
 
     if user.is_engineer:
         if org_id is not None:
@@ -96,7 +102,15 @@ def list_tickets(
     return templates.TemplateResponse(
         request,
         "tickets/list.html",
-        {"user": user, "tickets": rows, "orgs": orgs, "statuses": STATUSES, "filter_org_id": org_id, "filter_status": status},
+        {
+            "user": user,
+            "tickets": rows,
+            "orgs": orgs,
+            "statuses": STATUSES,
+            "filter_org_id": org_id,
+            "filter_status": status,
+            "show_deleted": show_deleted,
+        },
     )
 
 
@@ -106,7 +120,13 @@ def new_ticket_form(
     user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    orgs = db.execute(select(Organization).order_by(Organization.name)).scalars().all() if user.is_engineer else []
+    orgs = (
+        db.execute(select(Organization).where(Organization.is_active.is_(True)).order_by(Organization.name))
+        .scalars()
+        .all()
+        if user.is_engineer
+        else []
+    )
     return templates.TemplateResponse(request, "tickets/new.html", {"user": user, "orgs": orgs, "error": None})
 
 
@@ -125,7 +145,20 @@ def create_ticket(
     # explicitly pick a target org.
     if user.is_engineer:
         if org_id is None:
-            orgs = db.execute(select(Organization).order_by(Organization.name)).scalars().all()
+            orgs = db.execute(
+                select(Organization).where(Organization.is_active.is_(True)).order_by(Organization.name)
+            ).scalars().all()
+            return templates.TemplateResponse(
+                request, "tickets/new.html", {"user": user, "orgs": orgs, "error": "Select an organization."}, status_code=400
+            )
+        # Defensive re-check, same "never trust a client-submitted value
+        # blindly" discipline as system_summary below -- a stale page could
+        # still submit a since-deactivated org_id.
+        org = db.get(Organization, org_id)
+        if org is None or not org.is_active:
+            orgs = db.execute(
+                select(Organization).where(Organization.is_active.is_(True)).order_by(Organization.name)
+            ).scalars().all()
             return templates.TemplateResponse(
                 request, "tickets/new.html", {"user": user, "orgs": orgs, "error": "Select an organization."}, status_code=400
             )
@@ -172,6 +205,13 @@ def ticket_detail(
     # from a genuinely nonexistent id).
     ticket = db.get(Ticket, ticket_id)
     if ticket is None:
+        raise HTTPException(status_code=404)
+
+    # Soft-deleted tickets aren't RLS-protected (deleted_at isn't an org
+    # boundary) -- this is an app-layer rule, not a tenancy one. A Client
+    # gets the same 404 as a genuinely nonexistent ticket; an Engineer can
+    # still open it to restore it.
+    if ticket.deleted_at is not None and not user.is_engineer:
         raise HTTPException(status_code=404)
 
     _finalize_remote_sessions(db, ticket_id)
@@ -260,6 +300,44 @@ def update_ticket_status(
     ticket.status = status
     ticket.priority = priority
     ticket.assigned_engineer_id = int(assigned_engineer_id) if assigned_engineer_id else None
+
+    return RedirectResponse(f"/tickets/{ticket_id}", status_code=303)
+
+
+@router.post("/tickets/{ticket_id}/delete")
+def delete_ticket(
+    ticket_id: int,
+    user: CurrentUser = Depends(require_engineer),
+    db: Session = Depends(get_db),
+):
+    ticket = db.get(Ticket, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404)
+
+    # Idempotent -- a double-click just no-ops on the second attempt since
+    # deleted_at is no longer NULL.
+    db.execute(
+        text("UPDATE tickets SET deleted_at = now() WHERE id = :id AND deleted_at IS NULL"),
+        {"id": ticket_id},
+    )
+
+    return RedirectResponse("/tickets", status_code=303)
+
+
+@router.post("/tickets/{ticket_id}/restore")
+def restore_ticket(
+    ticket_id: int,
+    user: CurrentUser = Depends(require_engineer),
+    db: Session = Depends(get_db),
+):
+    ticket = db.get(Ticket, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404)
+
+    db.execute(
+        text("UPDATE tickets SET deleted_at = NULL WHERE id = :id AND deleted_at IS NOT NULL"),
+        {"id": ticket_id},
+    )
 
     return RedirectResponse(f"/tickets/{ticket_id}", status_code=303)
 

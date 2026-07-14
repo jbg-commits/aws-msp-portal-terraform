@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ org.name }} — Hive{% endblock %}
+{% block content %}
+<h1>{{ org.name }}</h1>
+<p class="muted">
+  {% if org.is_active %}<span class="success" style="padding:2px 10px; display:inline-block;">Active</span>
+  {% else %}<span class="error" style="padding:2px 10px; display:inline-block;">Inactive</span>{% endif %}
+</p>
+
+{% if created %}
+<div class="card">
+  <div class="success">Password reset.</div>
+  <p>Client login: <strong>{{ created.client_email }}</strong></p>
+  <p>Temporary password (shown once — relay this to the client securely):</p>
+  <p><code style="font-size:1.1rem; background:#0f172a; padding:8px 14px; border-radius:6px; display:inline-block;">{{ created.temp_password }}</code></p>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Client users</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Email</th><th></th></tr></thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.full_name }}</td>
+        <td>{{ u.email }}</td>
+        <td>
+          <form method="post" action="/admin/organizations/{{ org.id }}/users/{{ u.id }}/reset-password" style="display:inline;">
+            <button type="submit" class="btn-secondary">Reset password</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="muted">No client users yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<a class="btn" href="/admin/organizations/{{ org.id }}/users/new">Add client user</a>
+
+{% if org.is_active %}
+<form method="post" action="/admin/organizations/{{ org.id }}/deactivate" style="display:inline;" onsubmit="return confirm('Deactivate {{ org.name }}? Its client users will no longer be able to log in. This is reversible.');">
+  <button type="submit" class="btn-danger">Deactivate organization</button>
+</form>
+{% else %}
+<form method="post" action="/admin/organizations/{{ org.id }}/reactivate" style="display:inline;">
+  <button type="submit">Reactivate organization</button>
+</form>
+{% endif %}
+{% endblock %}

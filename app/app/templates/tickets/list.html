@@ -1,7 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Tickets — Hive{% endblock %}
 {% block content %}
-<h1>Tickets</h1>
+<h1>{% if show_deleted %}Deleted tickets{% else %}Tickets{% endif %}</h1>
+
+{% if user.is_engineer %}
+<p class="muted">
+  {% if show_deleted %}<a href="/tickets">Back to active tickets</a>
+  {% else %}<a href="/tickets?deleted=true">View deleted tickets</a>{% endif %}
+</p>
+{% endif %}
 
 {% if user.is_engineer %}
 <form method="get" action="/tickets" class="filters card">
